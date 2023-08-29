@@ -1,44 +1,39 @@
 #include <iostream>
+#include <csignal>
 #include <thread>
 #include <chrono>
 #include <atomic>
-#include <csignal>
 
-std::atomic<bool> stop(false);
+std::atomic<bool> obstacleDetected(false);
 
-void handleSignal(int signum) {
-    stop = true;
+void handleObstacleDetection(int signum) {
+    obstacleDetected = true;
 }
 
-void temperaturaMonitor() {
-    int temperatura = 20; // Inicializa a temperatura
+void detectObstacles() {
+    signal(SIGUSR1, handleObstacleDetection); // Configura o tratamento da interrupção de detecção de obstáculos
 
-    while (!stop) {
-        // Simula medição da temperatura
-        temperatura = rand() % 40; // Temperatura entre 0 e 39 graus Celsius
-
-        // Simula verificação de limite crítico
-        if (temperatura > 35) {
-            std::cout << "ALERTA: Temperatura crítica! " << temperatura << " graus Celsius.\n";
+    while (true) {
+        if (obstacleDetected) {
+            std::cout << "Obstáculo detectado! Parando o veículo imediatamente." << std::endl;
+            // Lógica para parar o veículo
+            obstacleDetected = false;
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // Intervalo de medição
+        // Lógica de temporização para verificar as condições periodicamente
+        std::cout << "Verificando obstáculos..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Verifica a cada 100 milissegundos
     }
 }
 
 int main() {
-    signal(SIGINT, handleSignal); // Configura o tratamento da interrupção (Ctrl+C)
+    std::thread obstacleThread(detectObstacles);
 
-    std::thread monitorThread(temperaturaMonitor);
+    // Simula a detecção de um obstáculo (gera interrupção)
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    raise(SIGUSR1); // Detecção de obstáculo
 
-    // Aguarda até que o usuário interrompa (Ctrl+C)
-    while (!stop) {
-        std::this_thread::yield(); // Libera o processador para outras tarefas
-    }
-
-    monitorThread.join(); // Espera a thread do monitor terminar
-
-    std::cout << "Programa encerrado." << std::endl;
+    obstacleThread.join(); // Espera a thread de detecção de obstáculos terminar
 
     return 0;
 }
