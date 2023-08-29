@@ -1,29 +1,40 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <mutex>
+#include <condition_variable>
 
-void tarefa1() {
-    for (int i = 0; i < 5; ++i) {
-        std::cout << "Tarefa 1 executando (" << i + 1 << "/5)\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
+std::mutex mtx;  // Mutex para sincronização
+std::condition_variable cv;  // Variável de condição para sincronização
+bool ready = false;
+
+void tarefaPrioritaria() {
+    // Tarefa prioritária
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [] { return ready; });  // Aguarda até que ready seja verdadeiro
+    std::cout << "Tarefa Prioritária executada." << std::endl;
 }
 
-void tarefa2() {
-    for (int i = 0; i < 5; ++i) {
-        std::cout << "Tarefa 2 executando (" << i + 1 << "/5)\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(800));
-    }
+void tarefaNormal() {
+    // Tarefa normal
+    std::cout << "Tarefa Normal executada." << std::endl;
 }
 
 int main() {
-    std::thread thread1(tarefa1);
-    std::thread thread2(tarefa2);
+    std::thread threadPrioritaria(tarefaPrioritaria);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Simula alguma atividade
 
-    thread1.join();
-    thread2.join();
+    // Preparando para executar a tarefa prioritária
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ready = true;
+    }
+    cv.notify_one();  // Notifica a tarefa prioritária para iniciar
 
-    std::cout << "Todas as tarefas foram concluídas.\n";
+    std::thread threadNormal(tarefaNormal);
+
+    threadPrioritaria.join();
+    threadNormal.join();
 
     return 0;
 }
