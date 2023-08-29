@@ -1,39 +1,51 @@
-#include <iostream>
-#include <vector>
-#include <deque>
-#include <chrono>
-#include <thread>
+#include <stdio.h>
 
-struct Task {
+typedef struct {
     int id;
-    int remainingTime;
-};
+    int runtime;
+    int priority;
+} Task;
 
 int main() {
-    std::deque<Task> taskQueue;
-    taskQueue.push_back({1, 5});
-    taskQueue.push_back({2, 3});
-
-    const int quantum = 2;
-
-    while (!taskQueue.empty()) {
-        Task currentTask = taskQueue.front();
-        taskQueue.pop_front();
-
-        std::cout << "Executando Tarefa " << currentTask.id << " por " << quantum << " unidades de tempo." << std::endl;
-
-        if (currentTask.remainingTime > quantum) {
-            currentTask.remainingTime -= quantum;
-            taskQueue.push_back(currentTask);
-        } else {
-            currentTask.remainingTime = 0;
-            std::cout << "Tarefa " << currentTask.id << " concluída." << std::endl;
+    Task tasks[] = {
+        {1, 10, 2},
+        {2, 8, 1},
+        {3, 6, 3}
+    };
+    
+    int numTasks = sizeof(tasks) / sizeof(tasks[0]);
+    
+    for (int time = 0; numTasks > 0; time++) {
+        Task *highestPriorityTask = NULL;
+        int highestPriorityIndex = -1;
+        
+        // Encontrar a tarefa de maior prioridade ainda não concluída
+        for (int i = 0; i < numTasks; i++) {
+            if (tasks[i].runtime > 0) {
+                if (highestPriorityTask == NULL || tasks[i].priority < highestPriorityTask->priority) {
+                    highestPriorityTask = &tasks[i];
+                    highestPriorityIndex = i;
+                }
+            }
         }
-
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // Simula o tempo de execução
+        
+        // Se nenhuma tarefa está pronta para ser executada, avançar o tempo
+        if (highestPriorityTask == NULL) {
+            printf("Tempo %d: Nenhuma tarefa pronta\n", time);
+        } else {
+            printf("Tempo %d: Executando Tarefa %d (Prioridade %d)\n", time, highestPriorityTask->id, highestPriorityTask->priority);
+            highestPriorityTask->runtime--;
+            
+            if (highestPriorityTask->runtime == 0) {
+                printf("Tarefa %d concluída.\n", highestPriorityTask->id);
+                // Remover tarefa concluída
+                for (int i = highestPriorityIndex; i < numTasks - 1; i++) {
+                    tasks[i] = tasks[i + 1];
+                }
+                numTasks--;
+            }
+        }
     }
-
-    std::cout << "Todas as tarefas foram concluídas." << std::endl;
-
+    
     return 0;
 }
